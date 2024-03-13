@@ -1,13 +1,11 @@
 package eventbus
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
-type DataEvent struct {
-	Data  any
-	Topic TopicName
-}
-
-type DataChannel chan DataEvent
+type DataChannel chan Event
 
 type DataChannels []DataChannel
 
@@ -16,6 +14,19 @@ type TopicName string
 type EventBus struct {
 	subscribers map[TopicName]DataChannels
 	rm          sync.RWMutex
+}
+
+type Event interface {
+	Type() string
+}
+
+type UserRegisteredEvent struct {
+	OccurredAt time.Time
+	Email      string
+}
+
+func (u UserRegisteredEvent) Type() string {
+	return "UserRegistered"
 }
 
 func NewEventBus() *EventBus {
@@ -35,7 +46,7 @@ func (eb *EventBus) Subscribe(topic TopicName, ch DataChannel) {
 	}
 }
 
-func (eb *EventBus) Publish(topic TopicName, data any) {
+func (eb *EventBus) Publish(topic TopicName, event Event) {
 	eb.rm.RLock()
 	defer eb.rm.RUnlock()
 
@@ -43,10 +54,10 @@ func (eb *EventBus) Publish(topic TopicName, data any) {
 		// this is done because the slices refer to same array even though they are passed by value
 		// thus we are creating a new slice with our elements thus preserve locking correctly.
 		channels := append(DataChannels{}, chans...)
-		go func(data DataEvent, dataChannelSlices DataChannels) {
+		go func(event Event, dataChannelSlices DataChannels) {
 			for _, ch := range dataChannelSlices {
-				ch <- data
+				ch <- event
 			}
-		}(DataEvent{Data: data, Topic: topic}, channels)
+		}(event, channels)
 	}
 }
