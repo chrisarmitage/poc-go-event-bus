@@ -8,7 +8,7 @@ import (
 	ebs "github.com/chrisarmitage/poc-go-event-bus/internal/event_bus"
 )
 
-func publishTo(eb *ebs.EventBus, topic string, data string) {
+func publishTo(eb *ebs.EventBus, topic ebs.TopicName, data string) {
 	for {
 		eb.Publish(topic, data)
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)

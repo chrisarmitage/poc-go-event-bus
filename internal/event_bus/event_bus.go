@@ -4,25 +4,27 @@ import "sync"
 
 type DataEvent struct {
 	Data  any
-	Topic string
+	Topic TopicName
 }
 
 type DataChannel chan DataEvent
 
-type DataChannelSlice []DataChannel
+type DataChannels []DataChannel
+
+type TopicName string
 
 type EventBus struct {
-	subscribers map[string]DataChannelSlice
+	subscribers map[TopicName]DataChannels
 	rm          sync.RWMutex
 }
 
 func NewEventBus() *EventBus {
 	return &EventBus{
-		subscribers: map[string]DataChannelSlice{},
+		subscribers: map[TopicName]DataChannels{},
 	}
 }
 
-func (eb *EventBus) Subscribe(topic string, ch DataChannel) {
+func (eb *EventBus) Subscribe(topic TopicName, ch DataChannel) {
 	eb.rm.Lock()
 	defer eb.rm.Unlock()
 
@@ -33,15 +35,15 @@ func (eb *EventBus) Subscribe(topic string, ch DataChannel) {
 	}
 }
 
-func (eb *EventBus) Publish(topic string, data any) {
+func (eb *EventBus) Publish(topic TopicName, data any) {
 	eb.rm.RLock()
 	defer eb.rm.RUnlock()
 
 	if chans, found := eb.subscribers[topic]; found {
 		// this is done because the slices refer to same array even though they are passed by value
 		// thus we are creating a new slice with our elements thus preserve locking correctly.
-		channels := append(DataChannelSlice{}, chans...)
-		go func(data DataEvent, dataChannelSlices DataChannelSlice) {
+		channels := append(DataChannels{}, chans...)
+		go func(data DataEvent, dataChannelSlices DataChannels) {
 			for _, ch := range dataChannelSlices {
 				ch <- data
 			}
